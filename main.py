@@ -1,6 +1,10 @@
 import re
 import markdown
+from flask import Flask, request, jsonify
 
+# -------------------------------
+# Función de conversión Markdown → HTML
+# -------------------------------
 def markdown_to_html(md_text: str) -> str:
     """
     Convierte Markdown a HTML completo con soporte de:
@@ -14,13 +18,7 @@ def markdown_to_html(md_text: str) -> str:
     # Normalizar saltos
     md_text = md_text.replace("\r\n", "\n").replace("\r", "\n").replace("\\n", "\n")
 
-    # 1) Extraer bloques de código
-    md_text, codeblocks = extract_codeblocks(md_text)
-
-    # 2) Proteger fórmulas LaTeX
-    md_text, formulas = protect_math(md_text)
-
-    # 3) Procesar Markdown sin preocuparse por saltos
+    # Procesar Markdown
     body_html = markdown.markdown(
         md_text,
         extensions=[
@@ -37,14 +35,10 @@ def markdown_to_html(md_text: str) -> str:
         }
     )
 
-    # 4) Restaurar fórmulas y bloques de código
-    body_html = restore_math(body_html, formulas)
-    body_html = restore_codeblocks(body_html, codeblocks)
-
-    # 5) Forzar que todos los \n se conviertan en <br>
+    # Forzar que todos los \n se conviertan en <br>
     body_html = body_html.replace("\n", "<br>\n")
 
-    # 6) Envolver en HTML completo + CSS tablas + MathJax
+    # Envolver en HTML completo + CSS tablas + MathJax
     full_html = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -61,5 +55,28 @@ def markdown_to_html(md_text: str) -> str:
 </body>
 </html>"""
 
-    # 7) Compactar espacios, pero mantener saltos de línea
     return re.sub(r"[ \t]+", " ", full_html)
+
+
+# -------------------------------
+# Configuración de Flask
+# -------------------------------
+app = Flask(__name__)
+
+@app.route("/", methods=["GET"])
+def index():
+    return "Servidor Flask funcionando correctamente 🚀"
+
+@app.route("/convert", methods=["POST"])
+def convert():
+    """
+    Convierte un texto Markdown recibido en JSON a HTML.
+    Ejemplo de uso con curl:
+    curl -X POST -H "Content-Type: application/json" \
+         -d '{"markdown": "# Hola **Mundo**"}' \
+         https://TU_APP_RENDER.onrender.com/convert
+    """
+    data = request.get_json()
+    md_text = data.get("markdown", "")
+    html = markdown_to_html(md_text)
+    return jsonify({"html": html})
