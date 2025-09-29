@@ -1,3 +1,6 @@
+import re
+import markdown
+
 def markdown_to_html(md_text: str) -> str:
     """
     Convierte Markdown a HTML completo con soporte de:
@@ -5,7 +8,9 @@ def markdown_to_html(md_text: str) -> str:
     - Checklist como casillas reales
     - Bloques de código intactos
     - Ecuaciones LaTeX protegidas (MathJax)
+    - Cada salto de línea \n se convierte en <br>
     """
+
     # Normalizar saltos
     md_text = md_text.replace("\r\n", "\n").replace("\r", "\n").replace("\\n", "\n")
 
@@ -15,14 +20,13 @@ def markdown_to_html(md_text: str) -> str:
     # 2) Proteger fórmulas LaTeX
     md_text, formulas = protect_math(md_text)
 
-    # 3) Procesar Markdown
+    # 3) Procesar Markdown sin preocuparse por saltos
     body_html = markdown.markdown(
         md_text,
         extensions=[
             "tables",
             "fenced_code",
             "sane_lists",
-            "nl2br",
             "pymdownx.tilde",     # ~~tachado~~
             "pymdownx.tasklist"   # checklists
         ],
@@ -37,7 +41,10 @@ def markdown_to_html(md_text: str) -> str:
     body_html = restore_math(body_html, formulas)
     body_html = restore_codeblocks(body_html, codeblocks)
 
-    # 5) Envolver en HTML completo + CSS tablas + MathJax
+    # 5) Forzar que todos los \n se conviertan en <br>
+    body_html = body_html.replace("\n", "<br>\n")
+
+    # 6) Envolver en HTML completo + CSS tablas + MathJax
     full_html = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -54,6 +61,5 @@ def markdown_to_html(md_text: str) -> str:
 </body>
 </html>"""
 
-    # 6) Compactar espacios, pero mantener saltos de línea
-    # Sustituimos solo espacios múltiples, no los \n
+    # 7) Compactar espacios, pero mantener saltos de línea
     return re.sub(r"[ \t]+", " ", full_html)
